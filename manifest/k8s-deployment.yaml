@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chaosmonkeypod
+  namespace: default
+  labels:
+    app: chaosmonkeypod
+spec:
+  selector:
+    matchLabels: 
+      app: chaosmonkeypod
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: chaosmonkeypod
+    spec:
+      containers:
+      - name: chaosmonkeypod
+        image: riccardo-bottini/chaosmonkey:latest
+        imagePullPolicy: Never
