@@ -1,9 +1,7 @@
 package com.riccardobottini.chaosmonkey;
 
 import java.text.SimpleDateFormat;
-import java.util.Collections;
 import java.util.Date;
-import java.util.Map;
 import java.util.Random;
 
 import org.slf4j.Logger;
