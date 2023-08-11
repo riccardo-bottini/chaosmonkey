@@ -1,6 +1,7 @@
 package com.riccardobottini.chaosmonkey;
 
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Random;
 
@@ -21,6 +22,12 @@ public class DeletePodScheduledJob {
     @Value("${k8s.target.namespace}")
     private String namespace;
 
+    @Value("${k8s.target.label.key}")
+    private String labelKey;
+
+    @Value("${k8s.target.label.value}")
+    private String labelValue;
+
     private Random random = new Random();
 
     private static final Logger log = LoggerFactory.getLogger(DeletePodScheduledJob.class);
@@ -31,20 +38,28 @@ public class DeletePodScheduledJob {
     public void deleteRandomPodFromNamespace() {
 
         try (KubernetesClient client = new KubernetesClientBuilder().build()) {
-            this.deleteRandomPodFromNamespace(client);
+            this.deleteRandomPodFromNamespace(client, labelKey, labelValue);
         }
     }
 
-    public int deleteRandomPodFromNamespace(KubernetesClient client) {
+    public int deleteRandomPodFromNamespace(KubernetesClient client, String labelKey, String labelValue) {
 
         log.info("Checking a random pod to be deleted at {}", dateFormat.format(new Date()));
 
         int resultSize = 0;
 
         try {
-            
-            // List pod in namespace
-            PodList podList = client.pods().inNamespace(namespace).list();
+            log.info("labelKey: {}, labelValue: {}", labelKey, labelValue);
+            PodList podList;
+            if (!labelKey.isBlank() && !labelValue.isBlank()) {
+                podList = client.pods()
+                        .inNamespace(namespace)
+                        .withLabels(Collections.singletonMap(labelKey, labelValue))
+                        .list();
+            } else {
+                // List pod in namespace
+                podList = client.pods().inNamespace(namespace).list();
+            }
 
             if (!podList.getItems().isEmpty()) {
                 // Get number of pods

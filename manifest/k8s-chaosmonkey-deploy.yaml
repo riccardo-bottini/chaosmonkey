@@ -4,9 +4,10 @@ metadata:
   name: chaosmonkey-configmap
 data:
   # Configuration values can be set as key-value properties
-  target-namespace: testing
   scheduler-fixedrate: "10000"
   scheduler-initialdelay: "5000"
+  target-label-key: ""
+  target-label-value: ""
 
 ---
 
@@ -36,11 +37,6 @@ spec:
               cpu: "500m"
           imagePullPolicy: Never
           env:
-            - name: target-namespace
-              valueFrom:
-                configMapKeyRef:
-                  name: chaosmonkey-configmap
-                  key: target-namespace
             - name: scheduler-fixedrate
               valueFrom:
                 configMapKeyRef:
@@ -51,3 +47,13 @@ spec:
                 configMapKeyRef:
                   name: chaosmonkey-configmap
                   key: scheduler-initialdelay
+            - name: target-label-key
+              valueFrom:
+                configMapKeyRef:
+                  name: chaosmonkey-configmap
+                  key: target-label-key
+            - name: target-label-value
+              valueFrom:
+                configMapKeyRef:
+                  name: chaosmonkey-configmap
+                  key: target-label-value
