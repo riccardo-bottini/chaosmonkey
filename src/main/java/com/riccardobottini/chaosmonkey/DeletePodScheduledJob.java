@@ -1,8 +1,9 @@
 package com.riccardobottini.chaosmonkey;
 
-import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
+import java.util.Map;
 import java.util.Random;
 
 import org.slf4j.Logger;
@@ -11,15 +12,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import io.kubernetes.client.openapi.ApiClient;
-import io.kubernetes.client.openapi.ApiException;
-import io.kubernetes.client.openapi.Configuration;
-import io.kubernetes.client.openapi.apis.CoreV1Api;
-import io.kubernetes.client.openapi.models.V1DeleteOptions;
-import io.kubernetes.client.openapi.models.V1ObjectMeta;
-import io.kubernetes.client.openapi.models.V1Pod;
-import io.kubernetes.client.openapi.models.V1PodList;
-import io.kubernetes.client.util.Config;
+import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.PodList;
+import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 
 @Component
 public class DeletePodScheduledJob {
@@ -27,87 +23,57 @@ public class DeletePodScheduledJob {
     @Value("${k8s.target.namespace}")
     private String namespace;
 
-    @Value("${k8s.target.namespace.pod.label}")
-    private String label;
-
     private Random random = new Random();
 
     private static final Logger log = LoggerFactory.getLogger(DeletePodScheduledJob.class);
 
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
 
-    @Scheduled(fixedRateString = "${scheduled.fixedrate.milliseconds}")
+    @Scheduled(fixedRateString = "${scheduler.fixedrate.milliseconds}", initialDelayString = "${scheduler.initialdelay.milliseconds}")
     public void deleteRandomPodFromNamespace() {
+
+        try (KubernetesClient client = new KubernetesClientBuilder().build()) {
+            this.deleteRandomPodFromNamespace(client);
+        }
+    }
+
+    public int deleteRandomPodFromNamespace(KubernetesClient client) {
+
         log.info("Checking a random pod to be deleted at {}", dateFormat.format(new Date()));
 
-        ApiClient apiClient;
+        int resultSize = 0;
+
         try {
-            // Configure K8s API client
-            apiClient = Config.defaultClient();
-            Configuration.setDefaultApiClient(apiClient);
-            CoreV1Api coreV1Api = new CoreV1Api(apiClient);
+            
+            // List pod in namespace
+            PodList podList = client.pods().inNamespace(namespace).list();
 
-            log.info("Getting pods from {}", namespace);
-
-            // List pods
-            V1PodList podList = coreV1Api.listNamespacedPod(
-                    namespace,
-                    null,
-                    null,
-                    null,
-                    null,
-                    label.isBlank() ? null : label,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null);
-
-            // Getting a random pod that will be deleted
             if (!podList.getItems().isEmpty()) {
-                int randomListElementIndex = random.nextInt(podList.getItems().size());
+                // Get number of pods
+                resultSize = podList.getItems().size();
+                log.info("Pod List size: {}", resultSize);
 
-                V1Pod podToBeDeleted = podList.getItems().get(randomListElementIndex);
+                // Get the pod that will be deleted
+                Pod podToBeDeleted = podList.getItems().get(random.nextInt(resultSize));
+                String podName = podToBeDeleted.getMetadata().getName();
+                log.info("Pod name: {}", podName);
 
-                V1ObjectMeta podMetadata = podToBeDeleted.getMetadata();
+                // Delete pod
+                client.pods().inNamespace(namespace).withName(podName).delete();
 
-                // Getting pod name
-                if (podMetadata != null) {
-                    String podName = podMetadata.getName();
-                    log.info("The pod {} will be deleted!", podName);
+                // Check if the pod is actually deleted
+                podList = client.pods().inNamespace(namespace).list();
+                resultSize = podList.getItems().size();
 
-                    V1DeleteOptions v1DeleteOptions = new V1DeleteOptions();
-                    v1DeleteOptions.setApiVersion(podToBeDeleted.getApiVersion());
-
-                    // Pod deletion
-                    V1Pod v1Status = coreV1Api.deleteNamespacedPod(
-                            podName,
-                            namespace,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            v1DeleteOptions);
-
-                    log.info("Pod {} deleted! Status: {}", podName, v1Status.getStatus());
+                if (!podList.getItems().contains(podToBeDeleted)) {
+                    log.info("{} deleted from namespace {}!", podName, namespace);
                 } else {
-                    log.warn("Pod Metadata is null!");
+                    log.error("{} not deleted from namespace {}!", podName, namespace);
                 }
-            } else {
-                log.warn("No pods found in namespace {}!", namespace);
             }
-        } catch (IOException e) {
-
-            log.error("Error with ApiClient!", e);
-            e.printStackTrace();
-
-        } catch (ApiException e) {
-
-            log.error("Error in get pod from namespace {} ", namespace);
-            log.info(e.getResponseBody());
-            e.printStackTrace();
-
+        } finally {
+            client.close();
         }
+        return resultSize;
     }
 }

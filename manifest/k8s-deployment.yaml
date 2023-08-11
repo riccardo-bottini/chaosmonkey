@@ -6,7 +6,7 @@ data:
   # Configuration values can be set as key-value properties
   target-namespace: testing
   scheduler-fixedrate: "10000"
-  target-label: ""
+  scheduler-initialdelay: "5000"
 
 ---
 
@@ -28,26 +28,26 @@ spec:
         app: chaosmonkeypod
     spec:
       containers:
-      - name: chaosmonkeypod
-        image: riccardo-bottini/chaosmonkey:latest
-        imagePullPolicy: Never
-        env:
-          - name: target-namespace
-            valueFrom:
-              configMapRef:
-                name: chaosmonkey-configmap
-                value: target-namespace
-          - name: scheduler-fixedrate
-            valueFrom:
-              configMapRef:
-                name: chaosmonkey-configmap
-                value: scheduler-fixedrate
-          - name: target-label
-            valueFrom:
-              configMapRef:
-                name: chaosmonkey-configmap
-                value: target-label
-        resources:
-          limits:
-            memory: "128Mi"
-            cpu: "500m"
+        - name: chaosmonkeypod
+          image: riccardo-bottini/chaosmonkey:latest
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          imagePullPolicy: Never
+          env:
+            - name: target-namespace
+              valueFrom:
+                configMapKeyRef:
+                  name: chaosmonkey-configmap
+                  key: target-namespace
+            - name: scheduler-fixedrate
+              valueFrom:
+                configMapKeyRef:
+                  name: chaosmonkey-configmap
+                  key: scheduler-fixedrate
+            - name: scheduler-initialdelay
+              valueFrom:
+                configMapKeyRef:
+                  name: chaosmonkey-configmap
+                  key: scheduler-initialdelay
