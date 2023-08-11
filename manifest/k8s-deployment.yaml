@@ -1,3 +1,15 @@
+apiVersion: v1 
+kind: ConfigMap 
+metadata:
+  name: chaosmonkey-configmap
+data:
+  # Configuration values can be set as key-value properties
+  target-namespace: testing
+  scheduler-fixedrate: "10000"
+  target-label: ""
+
+---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -19,3 +31,23 @@ spec:
       - name: chaosmonkeypod
         image: riccardo-bottini/chaosmonkey:latest
         imagePullPolicy: Never
+        env:
+          - name: target-namespace
+            valueFrom:
+              configMapRef:
+                name: chaosmonkey-configmap
+                value: target-namespace
+          - name: scheduler-fixedrate
+            valueFrom:
+              configMapRef:
+                name: chaosmonkey-configmap
+                value: scheduler-fixedrate
+          - name: target-label
+            valueFrom:
+              configMapRef:
+                name: chaosmonkey-configmap
+                value: target-label
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
