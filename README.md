@@ -32,8 +32,8 @@ For example, if you want to delete a random pod of the deployment "deploydeletem
     kubectl apply -f manifest/k8s-chaosmonkey-deploy.yaml
     ```
 ---   
-You can also set the fixed rate scheduler and the initial delay in the same config map in the same way.  
+You can also set the fixed rate interval and the initial delay of the scheduler in the same config map in the same way with the properties "scheduler-fixedrate" and "scheduler-initialdelay".  
 
 
-#
+
 I'm not responsible of any errors in your cluster caused by a pod deletion made with this app ;D
